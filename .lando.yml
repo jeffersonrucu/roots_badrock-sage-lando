@@ -1,0 +1,14 @@
+name: roots
+recipe: wordpress
+config:
+  webroot: web
+services:
+  appserver:
+    type: php:8.2
+  mailpit:
+    type: mailpit:1.27
+    mailFrom:
+      - appserver
+proxy:
+  mailpit:
+    - mailpit.roots.lndo.site
