@@ -19,7 +19,6 @@ jobs:
         uses: php-actions/composer@v6
         with:
           php_version: '8.3'
-          version: "2.8"
 
       - name: Install Dependencies [Sage Theme]
         working-directory: ./web/app/themes/sage
