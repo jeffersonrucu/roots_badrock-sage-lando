@@ -7,11 +7,6 @@ jobs:
   ci-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Permissions and Ownership
-        run: |
-          sudo find . -type d -exec chmod 755 {} \;
-          sudo find . -type f -exec chmod 644 {} \;
-
       - name: Checkout Repository
         uses: actions/checkout@v5
 
@@ -31,6 +26,53 @@ jobs:
       - name: Install Dependencies [WordPress Bedrock]
         run: composer install --no-dev --optimize-autoloader
 
-  # cd-deploy:
-  #   needs: ci-deploy
-  #   runs-on: self-hosted
+      - name: Upload Artefacts for Deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-deploy
+          path: ./
+          include-hidden-files: true
+
+  cd-deploy:
+    needs: ci-deploy
+    runs-on: self-hosted
+
+    steps:
+      - name: Define Environment Variables
+        run: |
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          RELEASE_DIR="/home/ec2-user/releases/$TIMESTAMP"
+          CURRENT_SYMLINK="/home/ec2-user/project"
+          echo "RELEASE_DIR=$RELEASE_DIR" >> $GITHUB_ENV
+          echo "CURRENT_SYMLINK=$CURRENT_SYMLINK" >> $GITHUB_ENV
+
+      - name: Download Artefacts from CI
+        uses: actions/download-artifact@v4
+        with:
+          name: prod-deploy
+
+      - name: Define New Release Path
+        id: release_path
+        run: |
+          mkdir -p $RELEASE_DIR
+
+      - name: Move Artefacts to Release Directory
+        run: |
+          rsync -av --remove-source-files $(pwd)/ ${{ env.RELEASE_DIR }}/
+
+      - name: Start Lando Environment in New Release
+        working-directory: ${{ env.RELEASE_DIR }}
+        run: lando start -y
+
+      - name: Swap Symlink to New Release
+        run: |
+          ln -sfn ${{ env.RELEASE_DIR }} ${{ env.CURRENT_SYMLINK }}
+
+      - name: Lando Rebuild
+        working-directory: ${{ env.CURRENT_SYMLINK }}
+        run: lando rebuild -y
+
+      - name: Clean Up Old Releases
+        run: |
+          ls -t /home/ec2-user/releases/ | tail -n +5 | xargs -I {} rm -rf /home/ec2-user/releases/{}
+
