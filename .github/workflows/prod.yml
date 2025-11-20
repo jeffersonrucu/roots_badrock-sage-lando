@@ -22,9 +22,10 @@ jobs:
 
       - name: Install Dependencies [Sage Theme]
         working-directory: ./web/app/themes/sage
-        run:
-          - composer install --no-dev --optimize-autoloader
-          - npm install && npm run build:production
+        run: |
+          composer install --no-dev --optimize-autoloader
+          npm install
+          npm run build:production
 
       - name: Install Plugins and Dependencies [WordPress]
         working-directory: ./
